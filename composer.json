@@ -1,0 +1,34 @@
+{
+  "name": "smoren/probability-selector",
+  "description": "Probability selector",
+  "keywords": ["helper", "probability", "frequency"],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Smoren",
+      "email": "ofigate@gmail.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.2.0",
+    "ext-json": "*",
+    "ext-mbstring": "*",
+    "dastanaron/yii2-translit": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Smoren\\ProbabilitySelector\\": "src"
+    }
+  },
+  "config": {
+    "fxp-asset": {
+      "enabled": false
+    }
+  },
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://asset-packagist.org"
+    }
+  ]
+}
