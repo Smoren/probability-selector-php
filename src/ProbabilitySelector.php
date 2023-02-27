@@ -1,172 +1,148 @@
 <?php
 
+declare(strict_types=1);
 
 namespace Smoren\ProbabilitySelector;
 
-
 /**
- * Класс для вероятностного выбора сущностей
+ * Probability-based selection manager.
+ *
+ * @template T
+ *
+ * @implements \IteratorAggregate<int, T>
  */
-class ProbabilitySelector
+class ProbabilitySelector implements \IteratorAggregate
 {
     /**
-     * @var array хранилище сущностей
+     * @var array<T> data storage
      */
-    protected $data;
+    protected array $data = [];
 
     /**
-     * @var int сумма весов всех сущностей
+     * @var array<array{float, int}>
      */
-    protected $weightSum = 0;
+    protected array $probabilities = [];
 
     /**
-     * @var int сумма количества использований всех сущностей
+     * @var float sum of all the weights of data
      */
-    protected $usageCounterSum = 0;
+    protected float $weightSum = 0;
+
+    /**
+     * @var int usage counters sum of data
+     */
+    protected int $totalUsageCounter = 0;
 
     /**
      * ProbabilitySelector constructor.
-     * @param array $items
+     *
+     * @param array<array{T, float}|array{T, float, int}> $data
      */
-    public function __construct(array $items = [])
+    public function __construct(array $data = [])
     {
-        foreach($items as [$id, $weight, $usageCounter]) {
-            $this->addItem($id, $weight, $usageCounter);
+        foreach ($data as $item) {
+            if (\count($item) === 2) {
+                $item[] = 0;
+            }
+
+            /** @var array{T, float, int} $item */
+            [$datum, $weight, $usageCounter] = $item;
+            $this->addItem($datum, $weight, $usageCounter);
         }
     }
 
     /**
-     * Добавить сущность для выбора
-     * @param int $id ID сущности
-     * @param float $weight вес сущности
-     * @param int $usageCounter количество использований сущности
+     * Adds datum to the select list.
+     *
+     * @param T $datum datum to add
+     * @param float $weight weight of datum
+     * @param int $usageCounter initial usage counter value for datum
+     *
      * @return $this
      */
-    public function addItem(int $id, float $weight, int $usageCounter): self
+    public function addItem($datum, float $weight, int $usageCounter): self
     {
-        $this->data[$id] = [$weight, $usageCounter];
+        if ($weight <= 0) {
+            throw new \InvalidArgumentException('Weight cannot be negative');
+        }
+
+        $this->data[] = $datum;
+        $this->probabilities[] = [$weight, $usageCounter];
         $this->weightSum += $weight;
-        $this->usageCounterSum += $usageCounter;
+        $this->totalUsageCounter += $usageCounter;
 
         return $this;
     }
 
     /**
-     * Принять решение, какую сущность использовать
-     * @return int ID выбранной сущности
-     * @throws ProbabilitySelectorException
+     * Chooses and returns datum from select list, marks it used.
+     *
+     * @return T chosen datum
+     *
+     * @throws \LengthException when selectable list is empty
      */
-    public function decide(): int
+    public function decide()
     {
-        $maxProbability = 0;
-        $maxProbabilityId = null;
+        $maxScore = -INF;
+        $maxScoreWeight = -INF;
+        $maxScoreId = null;
 
-        $maxDeviation = 0;
-        $maxDeviationId = null;
+        if (\count($this->probabilities) === 0) {
+            throw new \LengthException('Candidate not found in empty list');
+        }
 
-        foreach($this->data as $id => [$weight, $usageCounter]) {
-            $probability = $this->weightSum ? $weight/$this->weightSum : 0;
-            $usageDistribution = $this->usageCounterSum > 0 ? $usageCounter/$this->usageCounterSum : 0;
-            $deviation = $probability - $usageDistribution;
+        foreach ($this->probabilities as $id => [$weight, $usageCounter]) {
+            $score = $weight / ($usageCounter + 1);
 
-            if($probability > $maxProbability) {
-                $maxProbability = $probability;
-                $maxProbabilityId = $id;
-            }
-
-            if($deviation > $maxDeviation) {
-                $maxDeviation = $deviation;
-                $maxDeviationId = $id;
+            if ($this->areFloatsEqual($score, $maxScore) && $weight > $maxScoreWeight || $score > $maxScore) {
+                $maxScore = $score;
+                $maxScoreWeight = $weight;
+                $maxScoreId = $id;
             }
         }
 
-        if($maxProbabilityId === null) {
-            throw new ProbabilitySelectorException('candidate not found');
+        /** @var int $maxScoreId */
+        $this->incrementUsageCounter($maxScoreId);
+        return $this->data[$maxScoreId];
+    }
+
+    /**
+     * Returns iterator to get decisions sequence.
+     *
+     * @param int|null $limit
+     *
+     * @return \Generator
+     */
+    public function getIterator(?int $limit = null): \Generator
+    {
+        for ($i = 0; $limit === null || $i < $limit; ++$i) {
+            yield $this->totalUsageCounter => $this->decide();
         }
-
-        if($maxDeviationId !== null) {
-            return $maxDeviationId;
-        } else {
-            return $maxProbabilityId;
-        }
     }
 
     /**
-     * Инкрементирует счетчик использования сущности
-     * @param int $id ID сущности
-     * @return int новое значение счетчика использования
-     * @throws ProbabilitySelectorException
+     * Increments usage counter of datum by its ID.
+     *
+     * @param int $id datum ID
+     *
+     * @return int current value of usage counter
      */
-    public function incrementUsageCounter(int $id): int
+    protected function incrementUsageCounter(int $id): int
     {
-        $this->checkExist($id);
-
-        $this->usageCounterSum++;
-
-        return ++$this->data[$id][1];
+        $this->totalUsageCounter++;
+        return ++$this->probabilities[$id][1];
     }
 
     /**
-     * Возвращает карту сущностей по ID
-     * @return array
+     * Returns true if parameters are equal.
+     *
+     * @param float $lhs
+     * @param float $rhs
+     *
+     * @return bool
      */
-    public function getData(): array
+    protected function areFloatsEqual(float $lhs, float $rhs): bool
     {
-        return $this->data;
-    }
-
-    /**
-     * Возвращает сумму количества использований сущностей
-     * @return int
-     */
-    public function getUsageCounterSum(): int
-    {
-        return $this->usageCounterSum;
-    }
-
-    /**
-     * Возвращает сумму весов сущностей
-     * @return int
-     */
-    public function getWeightSum(): int
-    {
-        return $this->weightSum;
-    }
-
-    /**
-     * Рассчитывает величину отклонения показов сущности от заложенной весом вероятности
-     * @param int $id ID сущности
-     * @return float значение отклонения
-     * @throws ProbabilitySelectorException
-     */
-    public function getDeviation(int $id): float
-    {
-        $this->checkExist($id);
-        [$weight, $usageCounter] = $this->data[$id];
-
-        if($this->weightSum == 0) {
-            return 0;
-        }
-
-        if($this->usageCounterSum == 0) {
-            return $weight/$this->weightSum;
-        }
-
-        return $usageCounter/$this->usageCounterSum - $weight/$this->weightSum;
-    }
-
-    /**
-     * Проверяет сущность на наличие по ID
-     * @param int $id ID сущности
-     * @return $this
-     * @throws ProbabilitySelectorException
-     */
-    protected function checkExist(int $id): self
-    {
-        if(!isset($this->data[$id])) {
-            throw new ProbabilitySelectorException("no item found with id = {$id}");
-        }
-
-        return $this;
+        return \abs($lhs - $rhs) < PHP_FLOAT_EPSILON;
     }
 }

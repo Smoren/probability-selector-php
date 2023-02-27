@@ -10,14 +10,25 @@
     }
   ],
   "require": {
-    "php": ">=7.2.0",
+    "php": ">=7.4",
     "ext-json": "*",
-    "ext-mbstring": "*",
-    "dastanaron/yii2-translit": "*"
+    "ext-mbstring": "*"
+  },
+  "require-dev": {
+    "codeception/codeception": "^4.2.1",
+    "codeception/module-asserts": "^2.0",
+    "php-coveralls/php-coveralls": "^2.0",
+    "squizlabs/php_codesniffer": "3.*",
+    "phpstan/phpstan": "^1.8"
   },
   "autoload": {
     "psr-4": {
       "Smoren\\ProbabilitySelector\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Smoren\\ProbabilitySelector\\Tests\\Unit\\": "tests/unit"
     }
   },
   "config": {
@@ -30,5 +41,15 @@
       "type": "composer",
       "url": "https://asset-packagist.org"
     }
-  ]
+  ],
+  "scripts": {
+    "test-init": ["./vendor/bin/codecept build"],
+    "test-all": ["composer test-coverage", "composer codesniffer", "composer stan"],
+    "test": ["./vendor/bin/codecept run unit tests/unit"],
+    "test-coverage": ["./vendor/bin/codecept run unit tests/unit --coverage"],
+    "test-coverage-html": ["./vendor/bin/codecept run unit tests/unit --coverage-html"],
+    "test-coverage-xml": ["./vendor/bin/codecept run unit tests/unit --coverage-xml"],
+    "codesniffer": ["./vendor/bin/phpcs --ignore=vendor,tests --standard=tests/coding_standard.xml -s ."],
+    "stan": ["./vendor/bin/phpstan analyse"]
+  }
 }
