@@ -6,8 +6,9 @@
 ![Build and test](https://github.com/Smoren/probability-selector-php/actions/workflows/test_master.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Selection manager for the next element from data source based on uniform distribution of selections.
+Selection manager for choosing next elements to use from data source based on uniform distribution of selections.
 
+#### Infinite iteration
 ```php
 use Smoren\ProbabilitySelector\ProbabilitySelector;
 
@@ -22,11 +23,43 @@ foreach ($ps as $datum) {
     echo "{$datum}, ";
 }
 // second, second, first, second, third, third, second, first, third, second, third, third, second, first, third, ...
+```
 
-foreach ($ps->getIterator(3) as $datum) {
+#### Iteration limit and export
+```php
+use Smoren\ProbabilitySelector\ProbabilitySelector;
+
+$ps = new ProbabilitySelector([
+    // data     // weight
+    ['first',   1],
+    ['second',  2],
+]);
+foreach ($ps->getIterator(6) as $datum) {
     echo "{$datum}, ";
 }
-// second, second, first
+// second, second, first, second, second, first
+
+print_r($ps->export());
+/*
+[
+    ['first',  1, 2],
+    ['second', 2, 4],
+]
+ */
+```
+
+#### Single decision
+```php
+use Smoren\ProbabilitySelector\ProbabilitySelector;
+
+$ps = new ProbabilitySelector([
+    // data     // weight
+    ['first',   1],
+    ['second',  2],
+]);
+$ps->decide(); // second
+$ps->decide(); // second
+$ps->decide(); // first
 ```
 
 ## Unit testing

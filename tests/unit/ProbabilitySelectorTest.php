@@ -205,6 +205,54 @@ class ProbabilitySelectorTest extends Unit
     }
 
     /**
+     * @dataProvider dataProviderForExport
+     * @param array $input
+     * @param int $count
+     * @param array $expected
+     * @return void
+     */
+    public function testExport(array $input, int $count, array $expected): void
+    {
+        // Given
+        $ps = new ProbabilitySelector($input);
+
+        // When
+        foreach ($ps->getIterator($count) as $_) {
+        }
+
+        // Then
+        $this->assertEquals($expected, $ps->export());
+    }
+
+    public function dataProviderForExport(): array
+    {
+        return [
+            [
+                [
+                    ['a', 2, 0],
+                    ['b', 1, 0],
+                ],
+                6,
+                [
+                    ['a', 2, 4],
+                    ['b', 1, 2],
+                ],
+            ],
+            [
+                [
+                    ['a', 2, 0],
+                    ['b', 1, 1],
+                ],
+                5,
+                [
+                    ['a', 2, 4],
+                    ['b', 1, 2],
+                ],
+            ],
+        ];
+    }
+
+    /**
      * @dataProvider dataProviderForAxiomatic
      * @param array $input
      * @param int $cyclesCount

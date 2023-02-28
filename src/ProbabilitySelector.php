@@ -121,6 +121,16 @@ class ProbabilitySelector implements \IteratorAggregate
     }
 
     /**
+     * Exports data with probabilities and usage counters.
+     *
+     * @return array<array{T, float, int}>
+     */
+    public function export(): array
+    {
+        return array_map(fn ($datum, $config) => [$datum, ...$config], $this->data, $this->probabilities);
+    }
+
+    /**
      * Increments usage counter of datum by its ID.
      *
      * @param int $id datum ID
